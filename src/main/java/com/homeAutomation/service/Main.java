@@ -1,16 +1,21 @@
-package com.homeAutomation.Service;
+package com.homeAutomation.service;
+
+import com.homeAutomation.configuration.Configuration;
+import com.homeAutomation.resources.ResourcesHelper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Main {
-    public static final Logger LOGGER = LoggerFactory.getLogger(ServiceMain.class);
+    public static final Logger LOGGER = LoggerFactory.getLogger(Main.class);
 
-    private static final String DEFAULT_RESOURCES_PATH = "/home/pi/HomeAutomation/RPiCriticalTemperatureService";
-    private static final String SERVICE_PROPERTIES = "rpi_critical_temperature_service.properties";
+    private static final String DEFAULT_RESOURCES_PATH = "/home/pi/HomeAutomation/RoomVentilationService";
+    private static final String SERVICE_PROPERTIES = "room_ventilation_service.properties";
 
 
     public static void main(String[] args) {
         Configuration configuration = initConfiguration(args);
 
-        IService service = new Service.RPiCriticalTemperatureService(configuration);
+        RoomVentilationService service = new RoomVentilationService(configuration);
         service.start();
     }
 

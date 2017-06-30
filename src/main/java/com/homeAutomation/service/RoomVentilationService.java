@@ -1,4 +1,7 @@
-package com.homeAutomation.Service;
+package com.homeAutomation.service;
+
+import com.homeAutomation.configuration.Configuration;
+import sun.reflect.generics.reflectiveObjects.NotImplementedException;
 
 import java.util.Map;
 
@@ -6,6 +9,9 @@ import java.util.Map;
  * Created by fanta on 6/29/17.
  */
 public class RoomVentilationService {
+    private Controller controller;
+    public static final String NEW_LINE = System.getProperty("")
+
     private double fanStartTempC;
     private double fanStopTempC;
 
@@ -19,6 +25,8 @@ public class RoomVentilationService {
     private long fanStartTimeS;
 
     private boolean serviceStopped;
+
+    private int sleepTime;
 
     public RoomVentilationService(Configuration configuration) {
         init(configuration);
@@ -44,6 +52,11 @@ public class RoomVentilationService {
         fanMaxWorkTimeS = Integer.parseInt(config.getOrDefault("fan.max.work.time.seconds", "120"));
         fanCoolDownTimeS = Integer.parseInt(config.getOrDefault("fan.cool.down.time.seconds", "30"));
 
+        fanStarted = false;
+        setServiceStopped(false);
+
+        setSleepTime(30);
+
         controller = new Controller(configuration.getResourcesHelper());
 
         Main.LOGGER.info(config.toString());
@@ -51,13 +64,11 @@ public class RoomVentilationService {
 
     public void start() {
         Main.LOGGER.info("----------------------------------------");
-        Main.LOGGER.info("Home Ventilation Service started!\n");
+        Main.LOGGER.info("Home Ventilation service started!\n");
         sleep(2);
 
         double roomTemperature;
         int roomHumidity;
-        fanStarted = false;
-        setServiceStopped(false);
 
         while (!isServiceStopped()) {
             roomTemperature = controller.getRoomTemperature();
@@ -75,6 +86,8 @@ public class RoomVentilationService {
                 Main.LOGGER.info("WARN: Room Humidity: {}%. Starting the fan...", roomHumidity);
                 startFan();
             }
+
+            sleep(getSleepTime());
 
             if (fanStarted) {
                 Main.LOGGER.info("INFO: Fan will be ON for max {}s ({} mins)", fanMaxWorkTimeS, fanMaxWorkTimeS / 60);
@@ -104,7 +117,7 @@ public class RoomVentilationService {
             }
 
             Main.LOGGER.info("\n-------------------------------------------");
-            Main.LOGGER.info("Room Ventilation Service Terminated!");
+            Main.LOGGER.info("Room Ventilation service Terminated!");
         }
     }
 
@@ -122,6 +135,30 @@ public class RoomVentilationService {
         Main.LOGGER.info("Fan started!");
     }
 
+    protected boolean shouldStartFan() {
+        double roomTemperature = controller.getRoomTemperature();
+        double kitchenTemperature = controller.getKitchenTemperature();
+
+        int roomHumidity = controller.getRoomHumidity();
+        int kitchenHumidity = controller.getKitchenHumidity();
+
+        // If room is hot and kitchen is more cool
+        if (roomTemperature >= fanStartTempC && roomTemperature < kitchenTemperature) {
+            Main.LOGGER.info("WARN: Room Temperature: {}C. Starting the fan...", roomTemperature);
+//            startFan();
+        } else if (roomHumidity >= fanStartHumidityP) { // If high humidity detected
+            Main.LOGGER.info("WARN: Room Humidity: {}%. Starting the fan...", roomHumidity);
+            startFan();
+        }
+
+
+        throw new NotImplementedException();
+    }
+
+    protected boolean shouldStopFan() {
+        throw new NotImplementedException();
+    }
+
     protected long getCurrentTimeS() {
         return System.currentTimeMillis() / 1_000;
     }
@@ -136,5 +173,13 @@ public class RoomVentilationService {
 
     public void setServiceStopped(boolean serviceStopped) {
         this.serviceStopped = serviceStopped;
+    }
+
+    public int getSleepTime() {
+        return sleepTime;
+    }
+
+    public void setSleepTime(int sleepTime) {
+        this.sleepTime = sleepTime;
     }
 }

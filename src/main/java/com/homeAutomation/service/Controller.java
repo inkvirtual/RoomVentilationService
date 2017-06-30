@@ -14,26 +14,42 @@ public class Controller {
     }
 
     public double getRoomTemperature() {
+        bash.execute(resourcesHelper.getFullPath("room_get_temperature_and_humidity.sh"));
+
+        // TODO: get substring for temperature
+
         throw new NotImplementedException();
     }
 
     public double getKitchenTemperature() {
+        bash.execute(resourcesHelper.getFullPath("kitchen_get_temperature_and_humidity.sh"));
+
+        // TODO: get substring for temperature
+
         throw new NotImplementedException();
     }
 
     public int getRoomHumidity() {
+        bash.execute(resourcesHelper.getFullPath("room_get_temperature_and_humidity.sh"));
+
+        // TODO: get substring for humidity
+
         throw new NotImplementedException();
     }
 
     public int getKitchenHumidity() {
+        bash.execute(resourcesHelper.getFullPath("kitchen_get_temperature_and_humidity.sh"));
+
+        // TODO: get substring for humidity
+
         throw new NotImplementedException();
     }
 
     public void startFan() {
-        throw new NotImplementedException();
+        bash.execute(resourcesHelper.getFullPath("room_start_fan.sh"));
     }
 
     public void stopFan() {
-        throw new NotImplementedException();
+        bash.execute(resourcesHelper.getFullPath("room_stop_fan.sh"));
     }
 }

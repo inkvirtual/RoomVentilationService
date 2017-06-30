@@ -55,12 +55,13 @@ public class RoomVentilationService {
         fanCoolDownTimeS = Integer.parseInt(config.getOrDefault("fan.cool.down.time.seconds", "30"));
 
 //        checkConfig();
-        
+
         fanStarted = false;
         setServiceStopped(false);
 
         setSleepTimeStartService(2);
         setSleepTimeFanOn(60);
+        setSleepTimeService(60);
 
         controller = new Controller(configuration.getResourcesHelper());
 
@@ -101,7 +102,6 @@ public class RoomVentilationService {
                     sleep(getSleepTimeFanOn());
                 }
             }
-
             sleep(getSleepTimeService());
         }
         Main.LOGGER.info("\n-------------------------------------------");

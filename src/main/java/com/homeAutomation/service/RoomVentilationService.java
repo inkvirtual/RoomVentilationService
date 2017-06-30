@@ -9,10 +9,10 @@ import java.util.Map;
  * Created by fanta on 6/29/17.
  */
 public class RoomVentilationService {
-    private Controller controller;
-    public static final String NEW_LINE = System.getProperty("")
-
+    public static final String NEW_LINE = System.getProperty("line.separator");
     private double fanStartTempC;
+
+    private Controller controller;
     private double fanStopTempC;
 
     private int fanStartHumidityP;
@@ -26,7 +26,9 @@ public class RoomVentilationService {
 
     private boolean serviceStopped;
 
-    private int sleepTime;
+    private int sleepTimeFanOn;
+    private int sleepTimeStartService;
+    private int sleepTimeService;
 
     public RoomVentilationService(Configuration configuration) {
         init(configuration);
@@ -52,20 +54,28 @@ public class RoomVentilationService {
         fanMaxWorkTimeS = Integer.parseInt(config.getOrDefault("fan.max.work.time.seconds", "120"));
         fanCoolDownTimeS = Integer.parseInt(config.getOrDefault("fan.cool.down.time.seconds", "30"));
 
+//        checkConfig();
+        
         fanStarted = false;
         setServiceStopped(false);
 
-        setSleepTime(30);
+        setSleepTimeStartService(2);
+        setSleepTimeFanOn(60);
 
         controller = new Controller(configuration.getResourcesHelper());
 
         Main.LOGGER.info(config.toString());
     }
 
+    protected void checkConfig() {
+//        if (fanStartTempC > 35 || fanStartTempC )
+        throw new NotImplementedException();
+    }
+
     public void start() {
         Main.LOGGER.info("----------------------------------------");
-        Main.LOGGER.info("Home Ventilation service started!\n");
-        sleep(2);
+        Main.LOGGER.info("Home Ventilation Service started!\n");
+        sleep(getSleepTimeStartService());
 
         double roomTemperature;
         int roomHumidity;
@@ -78,47 +88,24 @@ public class RoomVentilationService {
             Main.LOGGER.info("DEBUG: Room Temp: {}C", roomTemperature);
             Main.LOGGER.info("DEBUG: Room Humidity: {}%", roomHumidity);
 
-            // If high temperature detected
-            if (roomTemperature >= fanStartTempC) {
-                Main.LOGGER.info("WARN: Room Temperature: {}C. Starting the fan...", roomTemperature);
-                startFan();
-            } else if (roomHumidity >= fanStartHumidityP) { // If high humidity detected
-                Main.LOGGER.info("WARN: Room Humidity: {}%. Starting the fan...", roomHumidity);
+            if (shouldStartFan()) {
                 startFan();
             }
-
-            sleep(getSleepTime());
 
             if (fanStarted) {
                 Main.LOGGER.info("INFO: Fan will be ON for max {}s ({} mins)", fanMaxWorkTimeS, fanMaxWorkTimeS / 60);
-                while (true) {
-                    roomTemperature = controller.getRoomTemperature();
-                    roomHumidity = controller.getRoomHumidity();
-
-                    if (roomTemperature <= fanStopTempC) {
-                        Main.LOGGER.info("INFO: Room Temperature cooled down: {}C. Stopping the fan...", roomTemperature);
+                while (!fanStarted) {
+                    if (shouldStopFan()) {
                         stopFan();
-                        break;
                     }
-                    if (roomHumidity <= fanStopHumidityP) {
-                        Main.LOGGER.info("INFO: Room Humidity decreased: {}%. Stopping the fan...", roomHumidity);
-                        stopFan();
-                        break;
-                    }
-                    if ((getCurrentTimeS() - fanStartTimeS) > fanMaxWorkTimeS) {
-                        Main.LOGGER.info(
-                                "INFO: Fan is ON for {}s ({} mins). Stopping the fan to cool down at least for {}s({} mins)",
-                                fanMaxWorkTimeS, fanMaxWorkTimeS / 60, fanCoolDownTimeS, fanCoolDownTimeS / 60);
-                        stopFan();
-                        sleep(fanCoolDownTimeS);
-                        break;
-                    }
+                    sleep(getSleepTimeFanOn());
                 }
             }
 
-            Main.LOGGER.info("\n-------------------------------------------");
-            Main.LOGGER.info("Room Ventilation service Terminated!");
+            sleep(getSleepTimeService());
         }
+        Main.LOGGER.info("\n-------------------------------------------");
+        Main.LOGGER.info("Room Ventilation service Terminated!");
     }
 
     protected void stopFan() {
@@ -144,19 +131,41 @@ public class RoomVentilationService {
 
         // If room is hot and kitchen is more cool
         if (roomTemperature >= fanStartTempC && roomTemperature < kitchenTemperature) {
-            Main.LOGGER.info("WARN: Room Temperature: {}C. Starting the fan...", roomTemperature);
-//            startFan();
-        } else if (roomHumidity >= fanStartHumidityP) { // If high humidity detected
-            Main.LOGGER.info("WARN: Room Humidity: {}%. Starting the fan...", roomHumidity);
-            startFan();
+            Main.LOGGER.info("WARN: High Room Temperature: {}C.", roomTemperature);
+            return true;
         }
 
+        // If room humidity is high, and its higher than kitchen humidity
+        if (roomHumidity >= fanStartHumidityP && roomHumidity < kitchenHumidity) {
+            Main.LOGGER.info("WARN: High Room Humidity: {}%.", roomHumidity);
+            return true;
+        }
 
-        throw new NotImplementedException();
+        return false;
     }
 
     protected boolean shouldStopFan() {
-        throw new NotImplementedException();
+        double roomTemperature = controller.getRoomTemperature();
+        int roomHumidity = controller.getRoomHumidity();
+
+        if (roomTemperature <= fanStopTempC) {
+            Main.LOGGER.info("INFO: Room Temperature cooled down: {}C.", roomTemperature);
+            return true;
+        }
+
+        if (roomHumidity <= fanStopHumidityP) {
+            Main.LOGGER.info("INFO: Room Humidity decreased: {}%.", roomHumidity);
+            return true;
+        }
+
+        if ((getCurrentTimeS() - fanStartTimeS) > fanMaxWorkTimeS) {
+            Main.LOGGER.info(
+                    "INFO: Fan is ON for {}s ({} mins). Max allowed time is {}s({} mins)",
+                    fanMaxWorkTimeS, fanMaxWorkTimeS / 60, fanCoolDownTimeS, fanCoolDownTimeS / 60);
+            return true;
+        }
+
+        return false;
     }
 
     protected long getCurrentTimeS() {
@@ -175,11 +184,27 @@ public class RoomVentilationService {
         this.serviceStopped = serviceStopped;
     }
 
-    public int getSleepTime() {
-        return sleepTime;
+    public int getSleepTimeFanOn() {
+        return sleepTimeFanOn;
     }
 
-    public void setSleepTime(int sleepTime) {
-        this.sleepTime = sleepTime;
+    public void setSleepTimeFanOn(int sleepTimeFanOn) {
+        this.sleepTimeFanOn = sleepTimeFanOn;
+    }
+
+    public int getSleepTimeStartService() {
+        return sleepTimeStartService;
+    }
+
+    public void setSleepTimeStartService(int sleepTimeStartService) {
+        this.sleepTimeStartService = sleepTimeStartService;
+    }
+
+    public int getSleepTimeService() {
+        return sleepTimeService;
+    }
+
+    public void setSleepTimeService(int sleepTimeService) {
+        this.sleepTimeService = sleepTimeService;
     }
 }

@@ -30,6 +30,8 @@ public class RoomVentilationService {
     private int sleepTimeStartService;
     private int sleepTimeService;
 
+    private Integer maxIterationsNumber;
+
     public RoomVentilationService(Configuration configuration) {
         init(configuration);
     }
@@ -63,6 +65,8 @@ public class RoomVentilationService {
         setSleepTimeFanOn(60);
         setSleepTimeService(60);
 
+        maxIterationsNumber = -1;
+
         controller = new Controller(configuration.getResourcesHelper());
 
         Main.LOGGER.info(config.toString());
@@ -81,13 +85,12 @@ public class RoomVentilationService {
         double roomTemperature;
         int roomHumidity;
 
-        while (!isServiceStopped()) {
+        while (!maxIterationsAchieved()) {
             roomTemperature = controller.getRoomTemperature();
             roomHumidity = controller.getRoomHumidity();
 
             // Switch to debug
-            Main.LOGGER.info("DEBUG: Room Temp: {}C", roomTemperature);
-            Main.LOGGER.info("DEBUG: Room Humidity: {}%", roomHumidity);
+            Main.LOGGER.info("DEBUG: Room Temp: {}C, Room Humidity: {}%", roomTemperature, roomHumidity);
 
             if (shouldStartFan()) {
                 startFan();
@@ -95,7 +98,7 @@ public class RoomVentilationService {
 
             if (fanStarted) {
                 Main.LOGGER.info("INFO: Fan will be ON for max {}s ({} mins)", fanMaxWorkTimeS, fanMaxWorkTimeS / 60);
-                while (!fanStarted) {
+                while (fanStarted) {
                     if (shouldStopFan()) {
                         stopFan();
                     }
@@ -104,6 +107,7 @@ public class RoomVentilationService {
             }
             sleep(getSleepTimeService());
         }
+        Main.LOGGER.info("Max Iterations Number achieved!");
         Main.LOGGER.info("\n-------------------------------------------");
         Main.LOGGER.info("Room Ventilation service Terminated!");
     }
@@ -123,6 +127,11 @@ public class RoomVentilationService {
     }
 
     protected boolean shouldStartFan() {
+        if (fanStarted) {
+//            Main.LOGGER.info("WARN: Fan already started!");
+            return false;
+        }
+
         double roomTemperature = controller.getRoomTemperature();
         double kitchenTemperature = controller.getKitchenTemperature();
 
@@ -130,13 +139,13 @@ public class RoomVentilationService {
         int kitchenHumidity = controller.getKitchenHumidity();
 
         // If room is hot and kitchen is more cool
-        if (roomTemperature >= fanStartTempC && roomTemperature < kitchenTemperature) {
+        if (roomTemperature >= fanStartTempC && roomTemperature > kitchenTemperature) {
             Main.LOGGER.info("WARN: High Room Temperature: {}C.", roomTemperature);
             return true;
         }
 
         // If room humidity is high, and its higher than kitchen humidity
-        if (roomHumidity >= fanStartHumidityP && roomHumidity < kitchenHumidity) {
+        if (roomHumidity >= fanStartHumidityP && roomHumidity > kitchenHumidity) {
             Main.LOGGER.info("WARN: High Room Humidity: {}%.", roomHumidity);
             return true;
         }
@@ -148,13 +157,8 @@ public class RoomVentilationService {
         double roomTemperature = controller.getRoomTemperature();
         int roomHumidity = controller.getRoomHumidity();
 
-        if (roomTemperature <= fanStopTempC) {
-            Main.LOGGER.info("INFO: Room Temperature cooled down: {}C.", roomTemperature);
-            return true;
-        }
-
-        if (roomHumidity <= fanStopHumidityP) {
-            Main.LOGGER.info("INFO: Room Humidity decreased: {}%.", roomHumidity);
+        if (roomTemperature <= fanStopTempC && roomHumidity <= fanStopHumidityP) {
+            Main.LOGGER.info("INFO: Room cooled down: {}C {}%", roomTemperature, roomHumidity);
             return true;
         }
 
@@ -206,5 +210,19 @@ public class RoomVentilationService {
 
     public void setSleepTimeService(int sleepTimeService) {
         this.sleepTimeService = sleepTimeService;
+    }
+
+    public void setMaxIterationsNumber(int maxIterationsNumber) {
+        this.maxIterationsNumber = new Integer(maxIterationsNumber);
+    }
+
+    public boolean maxIterationsAchieved() {
+        if (maxIterationsNumber != null) {
+            if (maxIterationsNumber < 1)
+                return true;
+
+            maxIterationsNumber--;
+        }
+        return false;
     }
 }

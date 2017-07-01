@@ -83,26 +83,35 @@ public class RoomVentilationService {
         sleep(getSleepTimeStartService());
 
         double roomTemperature;
+        double kitchenTemperature;
+
         int roomHumidity;
+        int kitchenHumidity;
 
         while (!maxIterationsAchieved()) {
-//            roomTemperature = controller.getRoomTemperature();
-//            roomHumidity = controller.getRoomHumidity();
+            roomTemperature = controller.getRoomTemperature();
+            kitchenTemperature = controller.getKitchenTemperature();
+            roomHumidity = controller.getRoomHumidity();
+            kitchenHumidity= controller.getKitchenHumidity();
 //
 //            // Switch to debug
 //            Main.LOGGER.info("DEBUG: Room Temp: {}C, Room Humidity: {}%", roomTemperature, roomHumidity);
 
-            if (shouldStartFan()) {
+            if (shouldStartFan(roomTemperature, kitchenTemperature, roomHumidity, kitchenHumidity)) {
                 startFan();
             }
 
             if (fanStarted) {
                 Main.LOGGER.info("INFO: Fan will be ON for max {}s ({} mins)", fanMaxWorkTimeS, fanMaxWorkTimeS / 60);
                 while (fanStarted) {
-                    if (shouldStopFan()) {
+                    if (shouldStopFan(roomTemperature, roomHumidity)) {
                         stopFan();
+                    } else {
+                        sleep(getSleepTimeFanOn());
+                        roomTemperature = controller.getRoomTemperature();
+                        roomHumidity = controller.getRoomHumidity();
                     }
-                    sleep(getSleepTimeFanOn());
+
                 }
             }
             sleep(getSleepTimeService());
@@ -126,39 +135,37 @@ public class RoomVentilationService {
         Main.LOGGER.info("Fan started!");
     }
 
-    protected boolean shouldStartFan() {
+    protected boolean shouldStartFan(double roomTemp, double kitchenTemp, int roomHum, int  kitchenHum) {
         if (fanStarted) {
 //            Main.LOGGER.info("WARN: Fan already started!");
             return false;
         }
 
-        double roomTemperature = controller.getRoomTemperature();
-        double kitchenTemperature = controller.getKitchenTemperature();
-
-        int roomHumidity = controller.getRoomHumidity();
-        int kitchenHumidity = controller.getKitchenHumidity();
+//        double roomTemperature = controller.getRoomTemperature();
+//        double kitchenTemperature = controller.getKitchenTemperature();
+//
+//        int roomHumidity = controller.getRoomHumidity();
+//        int kitchenHumidity = controller.getKitchenHumidity();
 
         // If room is hot and kitchen is more cool
-        if (roomTemperature >= fanStartTempC && roomTemperature > kitchenTemperature) {
-            Main.LOGGER.info("WARN: High Room Temperature: {}C.", roomTemperature);
+        if (roomTemp >= fanStartTempC && roomTemp > kitchenTemp) {
+            Main.LOGGER.info("WARN: High Room Temperature: {}C.", roomTemp);
             return true;
         }
 
         // If room humidity is high, and its higher than kitchen humidity
-        if (roomHumidity >= fanStartHumidityP && roomHumidity > kitchenHumidity) {
-            Main.LOGGER.info("WARN: High Room Humidity: {}%.", roomHumidity);
+        if (roomHum >= fanStartHumidityP && roomHum > kitchenHum) {
+            Main.LOGGER.info("WARN: High Room Humidity: {}%.", roomHum);
             return true;
         }
 
         return false;
     }
 
-    protected boolean shouldStopFan() {
-        double roomTemperature = controller.getRoomTemperature();
-        int roomHumidity = controller.getRoomHumidity();
+    protected boolean shouldStopFan(double roomTemp, int roomHum) {
 
-        if (roomTemperature <= fanStopTempC && roomHumidity <= fanStopHumidityP) {
-            Main.LOGGER.info("INFO: Room cooled down: {}C {}%", roomTemperature, roomHumidity);
+        if (roomTemp <= fanStopTempC && roomHum <= fanStopHumidityP) {
+            Main.LOGGER.info("INFO: Room cooled down: {}C {}%", roomTemp, roomHum);
             return true;
         }
 

@@ -86,11 +86,11 @@ public class RoomVentilationService {
         int roomHumidity;
 
         while (!maxIterationsAchieved()) {
-            roomTemperature = controller.getRoomTemperature();
-            roomHumidity = controller.getRoomHumidity();
-
-            // Switch to debug
-            Main.LOGGER.info("DEBUG: Room Temp: {}C, Room Humidity: {}%", roomTemperature, roomHumidity);
+//            roomTemperature = controller.getRoomTemperature();
+//            roomHumidity = controller.getRoomHumidity();
+//
+//            // Switch to debug
+//            Main.LOGGER.info("DEBUG: Room Temp: {}C, Room Humidity: {}%", roomTemperature, roomHumidity);
 
             if (shouldStartFan()) {
                 startFan();
